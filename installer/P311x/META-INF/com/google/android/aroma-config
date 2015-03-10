@@ -1,0 +1,99 @@
+﻿### LICENSE:
+#
+# Copyright (C) 2011 Ahmad Amarullah ( http://amarullz.com/ )
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or #implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+### FILE INFO:
+#
+# AROMA Installer 2.70 - AROMA Installer Test Script Configuration
+#       (c) 2011-2012 by Ahmad Amarullah
+#           amarullz - xda-developers
+#           http://www.amarullz.com/
+#
+#       Binary Version  : 2.70B
+#       Binary Codename : Flamboyan
+
+# Initializing Rom Information
+ini_set("rom_name",             "1n4148 based on AGNi pureCM Kernel");
+ini_set("rom_version",          "v4.3 (ALL AOSP)");
+ini_set("rom_author",           "1n4148@xda");
+ini_set("rom_device",           "P3110,P3113 Galaxy Tab 2");
+ini_set("rom_date",             "November, 01 2014");
+
+theme("ics");
+loadlang("langs/en.lang");
+fontresload( "0", "ttf/Roboto-Regular.ttf", "12" );
+fontresload( "1", "ttf/Roboto-Regular.ttf", "14" );
+
+viewbox(
+    "<~welcome.title>",
+  
+    "<~welcome.text1> <b>"+
+	  ini_get("rom_name")+
+	"</b> <~common.for> <b>"+ini_get("rom_device")+"</b>.\n\n"+
+	
+      "  <~welcome.version>\t\t: <b><#selectbg_g>"+ini_get("rom_version")+"</#></b>\n\n\n"+
+      "  DEVELOPER \t\t: <b><#selectbg_g>"+ini_get("rom_author")+"</#></b>\n\n\n"+
+      "  <~welcome.updated>\t\t: <b><#selectbg_g>"+ini_get("rom_date")+"</#></b>\n\n\n"+
+
+    "<~welcome.next>",
+  
+    "@welcome"
+);
+
+#
+setvar("retstatus",
+  install(
+	#-- Title
+      "Installing",
+	
+	#-- Installation Process message
+	  "<b>"+ini_get("rom_name")+"</b> are being installed.\n\n"+
+      "Please wait while installation wizard installs <b>"+ini_get("rom_name")+
+	  "</b>. This may take several minutes.",
+	
+	#-- Installation Icon
+      "@install",
+	
+	#-- Installation Finish Message
+      "The installation wizard has successfully installed <b>"+ini_get("rom_name")+
+	  "</b>. Press Next to continue."
+  )
+);
+
+ini_set("text_next", "Finish");
+ini_set("icon_next", "@finish");
+
+checkviewbox(
+    "Installation Completed",
+  
+    "<#selectbg_g><b>Congratulation...</b></#>\n\n"+
+    "<b>"+ini_get("rom_name")+"</b> has been installed into your device.\n\n"+
+    "Installer Status: "+getvar("retstatus")+"\n\n",
+	
+    "@welcome",
+
+    "Reboot your device now.",
+
+    "0",
+
+    "reboot_it"
+);
+
+if
+  getvar("reboot_it")=="1"
+then
+  reboot("onfinish");
+endif;
+

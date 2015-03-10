@@ -1,0 +1,7 @@
+#!/system/bin/sh
+#I/O Scheduler (ext SD)
+#Change I/O scheduler for external SD memory:
+#sio
+
+echo "sio" > /sys/block/mmcblk1/queue/scheduler
+

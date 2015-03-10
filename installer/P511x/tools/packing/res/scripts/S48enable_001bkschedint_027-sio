@@ -1,0 +1,10 @@
+#!/system/bin/sh
+#I/O Scheduler (int SD)
+#Change I/O scheduler for internal SD memory:
+#sio
+
+chmod 0664 /sys/block/mmcblk0/queue/scheduler
+echo "sio" > /sys/block/mmcblk0/queue/scheduler
+chmod 0444 /sys/block/mmcblk0/queue/scheduler
+
+/sbin/busybox sleep 2

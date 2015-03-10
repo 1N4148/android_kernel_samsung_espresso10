@@ -1,0 +1,6 @@
+#!/system/bin/sh
+#SAMSUNG DOCK KEYBOARD
+#Enable or disable optional dock keyboard support:
+#Off (Default)
+
+rmmod /lib/modules/sec_dock_keyboard.ko

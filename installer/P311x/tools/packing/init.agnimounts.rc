@@ -1,0 +1,42 @@
+## AGNi Mounts (P31xx)
+
+on early-fs
+    mkdir /system
+    mkdir /data
+    mkdir /cache
+    mkdir /preload
+    mkdir /efs
+    wait /dev/block/platform/omap/omap_hsmmc.1/by-name/FACTORYFS
+    wait /dev/block/platform/omap/omap_hsmmc.1/by-name/DATAFS
+    wait /dev/block/platform/omap/omap_hsmmc.1/by-name/CACHE
+    wait /dev/block/platform/omap/omap_hsmmc.1/by-name/HIDDEN
+    wait /dev/block/platform/omap/omap_hsmmc.1/by-name/EFS
+    wait /proc/mounts
+    exec /sbin/fs_checker.sh
+    wait /fs_checker_status
+    mount ext4 /dev/block/platform/omap/omap_hsmmc.1/by-name/FACTORYFS /system rw wait noatime nodiratime nosuid nodev discard
+    mount f2fs /dev/block/platform/omap/omap_hsmmc.1/by-name/FACTORYFS /system rw wait noatime nodiratime nosuid nodev discard,background_gc=off,inline_xattr,active_logs=2
+    mount ext4 /dev/block/platform/omap/omap_hsmmc.1/by-name/DATAFS /data wait noatime nodiratime nosuid nodev discard,noauto_da_alloc,journal_async_commit
+    mount f2fs /dev/block/platform/omap/omap_hsmmc.1/by-name/DATAFS /data wait noatime nodiratime nosuid nodev discard,background_gc=off,inline_xattr,active_logs=2
+    mount ext4 /dev/block/platform/omap/omap_hsmmc.1/by-name/CACHE /cache wait noatime nodiratime nosuid nodev discard
+    mount f2fs /dev/block/platform/omap/omap_hsmmc.1/by-name/CACHE /cache wait noatime nodiratime nosuid nodev discard,background_gc=off,inline_xattr,active_logs=2
+    mount ext4 /dev/block/platform/omap/omap_hsmmc.1/by-name/HIDDEN /preload wait noatime nodiratime nosuid nodev discard
+    mount f2fs /dev/block/platform/omap/omap_hsmmc.1/by-name/HIDDEN /preload wait noatime nodiratime nosuid nodev discard,background_gc=off,inline_xattr,active_logs=2
+    exec /sbin/fstab_handler.sh
+    chmod 0775 /system/bin/sdcard
+
+on init
+    setprop persist.sys.ui.hw 1
+    setprop ro.max.fling_velocity 12000
+    setprop ro.min.fling_velocity 8000
+    setprop touch.pressure.scale 0.001
+    setprop hw3d.force 1
+    setprop pm.sleep_mode 1
+    setprop ro.ril.power_collapse 1
+    setprop ro.telephony.call_ring.delay 0
+    setprop video.accelerate.hw 1
+    setprop ro.config.hw_quickpoweron true
+    setprop ro.telephony.call_ring.delay 0
+    setprop persist.sys.purgeable_assets 1
+    setprop persist.android.strictmode 0
+

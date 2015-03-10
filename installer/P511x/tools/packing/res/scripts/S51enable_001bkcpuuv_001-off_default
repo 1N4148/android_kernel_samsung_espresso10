@@ -1,0 +1,6 @@
+#!/system/bin/sh
+#TI OMAP 4430 CPU Undervolting
+#Change CPU voltage:
+#Off (Stock default HOTTER)
+
+echo "1400 1385 1375 1374 1313 1200 1025 925 " > /sys/devices/system/cpu/cpu0/cpufreq/UV_mV_table

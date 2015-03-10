@@ -1,0 +1,226 @@
+#!/tmp/packing/sbin/busybox sh
+
+#### AGNi pureCM (psndna88@gmail.com)
+#### AGNi Kernel-Patcher (based on original implementation for GT-S5830)
+
+#### DEFINE AGNi pureCM version info ########################################################################
+AGNI_PURECM_VER="4.3"
+AGNI_PURECM_SELINUX="PERMISSIVE"
+DEVICE_MODEL="P5110,P5113"
+DEVICE_NAME="espresso10rf,espresso10wifi"
+BOOT_PARTITION="/dev/block/mmcblk0p5"
+AGNI_PATCHER_VER="4.3.2"
+#############################################################################################################
+#### DEFINE MKBOOTIMG PARAMETERS (Device specifics) #########################################################
+MK_BASE=40000000
+MK_RAMADDR=41000000
+MK_PAGESIZE=2048
+MK_CMDLINE=""
+#############################################################################################################
+
+ROM_BUILD_PROP="/system/build.prop"
+AGNI_LOG_FILE="/data/.AGNi/AGNi_pureCM_install.log"
+
+ln -s /tmp/bootimgtools /tmp/mkbootimg;
+ln -s /tmp/bootimgtools /tmp/unpack_bootimg;
+chmod +x /tmp/mkbootimg;
+chmod +x /tmp/unpack_bootimg;
+
+mkdir -p /data/.AGNi
+mkdir -p /tmp/oldboot
+mkdir -p /tmp/extracted
+mkdir -p /tmp/workboot
+mkdir -p /tmp/bootimg
+chmod -R 775 /tmp/packing
+chmod -R 775 /tmp/oldboot
+chmod -R 775 /tmp/workboot
+chmod -R 775 /tmp/extracted
+chmod -R 775 /tmp/bootimg
+
+RAMFS_EXTRACT_FAIL="0"
+touch $AGNI_LOG_FILE
+chmod 664 $AGNI_LOG_FILE
+
+echo " " > $AGNI_LOG_FILE
+echo " " >> $AGNI_LOG_FILE
+echo "############################################################################" >> $AGNI_LOG_FILE
+echo "			AGNi pureCM Installer LOG " >> $AGNI_LOG_FILE
+echo "############################################################################" >> $AGNI_LOG_FILE
+echo " " >> $AGNI_LOG_FILE
+echo "Dated: `date` " >> $AGNI_LOG_FILE
+echo "   pureCM version		: v$AGNI_PURECM_VER" >> $AGNI_LOG_FILE
+echo "   Kernel Patcher version	: v$AGNI_PATCHER_VER" >> $AGNI_LOG_FILE
+echo "   SELINUX status		: $AGNI_PURECM_SELINUX" >> $AGNI_LOG_FILE
+echo "   Target device model(s)	: $DEVICE_MODEL" >> $AGNI_LOG_FILE
+echo "   Target device name(s)	: $DEVICE_NAME" >> $AGNI_LOG_FILE
+echo " " >> $AGNI_LOG_FILE
+echo "ROM BUILD INFO :-" >> $AGNI_LOG_FILE
+echo "  `grep ro.cm.version $ROM_BUILD_PROP` " >> $AGNI_LOG_FILE
+echo "  `grep ro.modversion $ROM_BUILD_PROP` " >> $AGNI_LOG_FILE
+echo "  `grep ro.cm.display.version $ROM_BUILD_PROP` " >> $AGNI_LOG_FILE
+echo "  `grep ro.build.user $ROM_BUILD_PROP` " >> $AGNI_LOG_FILE
+echo "  `grep ro.build.host $ROM_BUILD_PROP` " >> $AGNI_LOG_FILE
+echo "  `grep ro.build.date= $ROM_BUILD_PROP` " >> $AGNI_LOG_FILE
+echo "  `grep ro.build.display.id $ROM_BUILD_PROP` " >> $AGNI_LOG_FILE
+echo "  `grep ro.build.version.release $ROM_BUILD_PROP` " >> $AGNI_LOG_FILE
+echo "  `grep ro.product.model $ROM_BUILD_PROP` " >> $AGNI_LOG_FILE
+echo "  `grep ro.product.device= $ROM_BUILD_PROP` " >> $AGNI_LOG_FILE
+echo "  `grep ro.cm.device $ROM_BUILD_PROP` " >> $AGNI_LOG_FILE
+echo " " >> $AGNI_LOG_FILE
+
+echo " Extracting existing flashed boot.img... " >> $AGNI_LOG_FILE
+dd if=$BOOT_PARTITION of=/tmp/oldboot/boot.img bs=$MK_PAGESIZE;
+echo " Extracted existing flashed boot.img ! " >> $AGNI_LOG_FILE
+echo "	=====>	Size: `du -h /tmp/oldboot/boot.img`" >> $AGNI_LOG_FILE
+
+echo " Extracting contents of existing flashed boot.img... " >> $AGNI_LOG_FILE
+/tmp/unpack_bootimg -i /tmp/oldboot/boot.img -o /tmp/oldboot;
+mv /tmp/oldboot/boot.img-zImage /tmp/oldboot/old_zImage
+mv /tmp/oldboot/boot.img-ramdisk.gz /tmp/oldboot/old_ramdisk.gz
+echo " Extracted contents of existing flashed boot.img ! " 	>> $AGNI_LOG_FILE
+echo "	=====>	Size: `du -h /tmp/oldboot/old_zImage`" >> $AGNI_LOG_FILE
+echo "	=====>	Size: `du -h /tmp/oldboot/old_ramdisk.gz`" >> $AGNI_LOG_FILE
+
+echo " Extracting RAMDISK from existing flashed kernel... " >> $AGNI_LOG_FILE
+cd /tmp/extracted; gunzip -c /tmp/oldboot/old_ramdisk.gz | cpio -i || RAMFS_EXTRACT_FAIL=1
+if ! [ "$RAMFS_EXTRACT_FAIL" == "1" ];
+	then
+	echo " Extracted RAMDISK from existing flashed kernel ! " >> $AGNI_LOG_FILE
+	else
+	echo " Extracting RAMDISK Failed, unsupported & non-standard ramdisk ! " >> $AGNI_LOG_FILE && exit 1
+fi
+
+echo " Checking RAMDISK for conflicting contents... " >> $AGNI_LOG_FILE
+if [ -d /tmp/extracted/res/scripts ] || [ -f /tmp/extracted/sbin/busybox ] || [ "`ls /tmp/extracted/sbin | grep .sh`" ];
+	then
+	mkdir -p /tmp/extracted/sbin-TEMP
+	mkdir -p /tmp/extracted/res-images-charger-TEMP
+	cp /tmp/extracted/sbin/adbd /tmp/extracted/sbin-TEMP
+	cp /tmp/extracted/sbin/cbd /tmp/extracted/sbin-TEMP
+	cp /tmp/extracted/sbin/healthd /tmp/extracted/sbin-TEMP
+	cp /tmp/extracted/res/images/charger/* /tmp/extracted/res-images-charger-TEMP
+	rm -rf /tmp/extracted/sbin/*
+	rm -rf /tmp/extracted/res/*
+	cp /tmp/extracted/sbin-TEMP/* /tmp/extracted/sbin/
+	mkdir -p /tmp/extracted/res/images/charger
+	cp /tmp/extracted/res-images-charger-TEMP/* /tmp/extracted/res/images/charger/
+	rm -rf /tmp/extracted/sbin-TEMP
+	rm -rf /tmp/extracted/res-images-charger-TEMP
+	echo " Removed possibly conflicting contents from RAMDISK ! " >> $AGNI_LOG_FILE
+	else
+	echo " No conflicting contents found ! " >> $AGNI_LOG_FILE
+fi
+
+echo " Modifying RAMDISK from existing flashed kernel... " >> $AGNI_LOG_FILE
+if ! [ "`grep quick_boot.sh /tmp/extracted/init.rc`" ];
+	then
+	patch /tmp/extracted/init.rc -i /tmp/workboot/init.rc.patch;
+	echo " Applied modification 1 to init.rc ! " >> $AGNI_LOG_FILE
+fi
+if ! [ "`grep psnconfig.sh /tmp/extracted/init.rc`" ];
+	then
+	echo "`cat /tmp/workboot/init-append`" >> /tmp/extracted/init.rc
+	echo " Applied modification 2 to init.rc ! " >> $AGNI_LOG_FILE
+fi
+if ! [ "`grep init.agnimounts.rc /tmp/extracted/init.espresso10.rc`" ];
+	then
+        awk '/init.espresso10.usb.rc/{print "	import init.agnimounts.rc"} {print}' /tmp/extracted/init.espresso10.rc > /tmp/extracted/init.espresso10.rc-temp
+	mv /tmp/extracted/init.espresso10.rc-temp /tmp/extracted/init.espresso10.rc
+        awk '/mount_all/{print "	   mount_all /fstab.espresso10.additional"} {print}' /tmp/extracted/init.espresso10.rc > /tmp/extracted/init.espresso10.rc-temp
+	mv /tmp/extracted/init.espresso10.rc-temp /tmp/extracted/init.espresso10.rc
+	sed '/FACTORYFS/d' /tmp/extracted/fstab.espresso10 > /tmp/extracted/fstab.espresso10-temp
+	mv /tmp/extracted/fstab.espresso10-temp /tmp/extracted/fstab.espresso10
+	sed '/DATAFS/d' /tmp/extracted/fstab.espresso10 > /tmp/extracted/fstab.espresso10-temp
+	mv /tmp/extracted/fstab.espresso10-temp /tmp/extracted/fstab.espresso10
+	sed '/CACHE/d' /tmp/extracted/fstab.espresso10 > /tmp/extracted/fstab.espresso10-temp
+	mv /tmp/extracted/fstab.espresso10-temp /tmp/extracted/fstab.espresso10
+	sed '/HIDDEN/d' /tmp/extracted/fstab.espresso10 > /tmp/extracted/fstab.espresso10-temp
+	mv /tmp/extracted/fstab.espresso10-temp /tmp/extracted/fstab.espresso10
+	echo " Applied modification 1 to init.espresso10.rc ! " >> $AGNI_LOG_FILE
+fi
+if ! [ "`grep f2fs /tmp/extracted/init.espresso10.rc`" ];
+	then
+	awk '/FACTORYFS/{print "    mount f2fs /dev/block/platform/omap/omap_hsmmc.1/by-name/FACTORYFS /system ro wait noatime nodiratime nosuid nodev discard inline_xattr active_logs=2"} {print}' /tmp/extracted/init.espresso10.rc > /tmp/extracted/init.espresso10.rc-temp
+	mv /tmp/extracted/init.espresso10.rc-temp /tmp/extracted/init.espresso10.rc
+	echo " Applied modification 2 to init.espresso10.rc ! " >> $AGNI_LOG_FILE
+fi
+if ! [ "`grep AGNi-Set-SELINUX-PERMISSIVE /tmp/extracted/init.espresso10.rc`" ];
+	then
+	echo "`cat /tmp/workboot/init.espresso10-append`" >> /tmp/extracted/init.espresso10.rc
+	echo " Applied modification to init.espresso10.rc ! " >> $AGNI_LOG_FILE
+fi
+if ! [ "`grep AGNi /system/bin/sysinit`" ];
+	then
+	echo "`cat /tmp/workboot/system-sysinit-replace`" > /system/bin/sysinit
+	echo " Applied modification to /system/bin/sysinit ! " >> $AGNI_LOG_FILE
+fi
+#if [ "`grep f2fs /proc/mounts`" ];
+#	then
+#	if [ "`grep omni $ROM_BUILD_PROP`" ] || [ "`grep slim $ROM_BUILD_PROP`" ];
+#		then
+#		mv -f /tmp/workboot/sepolicy /tmp/extracted/sepolicy
+#		echo " Replaced sepolicy. " >> $AGNI_LOG_FILE
+#	fi
+#fi
+
+mkdir -p /tmp/extracted/dev
+mkdir -p /tmp/extracted/data
+mkdir -p /tmp/extracted/dev
+mkdir -p /tmp/extracted/proc
+mkdir -p /tmp/extracted/res
+mkdir -p /tmp/extracted/sbin
+mkdir -p /tmp/extracted/sys
+mkdir -p /tmp/extracted/system
+mkdir -p /tmp/extracted/preload
+mkdir -p /tmp/extracted/cache
+cp -rf /tmp/packing/* /tmp/extracted
+cd /tmp/extracted/sbin; ln -s ../init ueventd; ln -s ../init watchdogd;
+cd /tmp/extracted/sbin; ln -s busybox sh;
+cd /tmp/extracted/sbin; ln -s mount.exfat fsck.exfat; ln -s mount.exfat mkfs.exfat;
+chmod 644 /tmp/extracted/*
+chmod 777 /tmp/extracted/init
+chmod 777 /tmp/extracted/charger
+chmod -R 777 /tmp/extracted/res
+chmod -R 777 /tmp/extracted/sbin
+echo " RAMDISK has been modified successfully ! " >> $AGNI_LOG_FILE
+
+echo "  " >> $AGNI_LOG_FILE
+echo " Packing AGNi-PATCHED RAMDISK... " >> $AGNI_LOG_FILE
+cd /tmp/extracted; find . | cpio -o -H newc | gzip > /tmp/bootimg/patched-ramdisk.gz;
+mv /tmp/bootimg/P511x/zImage /tmp/bootimg/new-zImage && P51XX_TYPE="P511x" && touch /tmp/bootimg/zImage-is-P511x
+echo " Packed AGNi-PATCHED RAMDISK ! " >> $AGNI_LOG_FILE
+echo "	=====>	Size: `du -h /tmp/bootimg/new-zImage`" >> $AGNI_LOG_FILE
+echo "	=====>	Size: `du -h /tmp/bootimg/patched-ramdisk.gz`" >> $AGNI_LOG_FILE
+
+echo "   " >> $AGNI_LOG_FILE
+echo " Assembling AGNi-PATCHED boot.img for flashing... " >> $AGNI_LOG_FILE
+chmod -R 644 /tmp/bootimg/*
+/tmp/mkbootimg --kernel /tmp/bootimg/new-zImage --ramdisk /tmp/bootimg/patched-ramdisk.gz --base $MK_BASE --ramdiskaddr $MK_RAMADDR --pagesize $MK_PAGESIZE --cmdline "$MK_CMDLINE" -o /tmp/boot.img;
+chmod 644 /tmp/boot.img
+echo " AGNi-PATCHED boot.img ready to flash ! " >> $AGNI_LOG_FILE
+echo "		P51xx type	: $P51XX_TYPE " >> $AGNI_LOG_FILE
+echo "		base		: $MK_BASE " >> $AGNI_LOG_FILE
+echo "		ramdiskaddr	: $MK_RAMADDR " >> $AGNI_LOG_FILE
+echo "		pagesize	: $MK_PAGESIZE " >> $AGNI_LOG_FILE
+echo "		cmdline		: $MK_CMDLINE " >> $AGNI_LOG_FILE
+echo "	=====>	Size: `du -h /tmp/boot.img`" >> $AGNI_LOG_FILE
+
+##### Optional placing copy of old and new patched boot.imgs  ###############################################
+if [ -f /data/.AGNi/copy_bootimg ];
+	then
+	mkdir -p /data/.AGNi/unpatched_boot.img_copy
+	mkdir -p /data/.AGNi/patched_boot.img_copy
+	rm /data/.AGNi/unpatched_boot.img_copy/boot.img
+	rm /data/.AGNi/patched_boot.img_copy/boot.img
+	cp /tmp/oldboot/boot.img /data/.AGNi/unpatched_boot.img_copy/boot.img
+	cp /tmp/boot.img /data/.AGNi/patched_boot.img_copy/boot.img
+	chmod -R 775 /data/.AGNi
+	echo " Placed copy of old and new patched boot.imgs !  " >> $AGNI_LOG_FILE
+	echo "	=====>	Size: `du -h /data/.AGNi/unpatched_boot.img_copy/boot.img`" >> $AGNI_LOG_FILE
+	echo "	=====>	Size: `du -h /data/.AGNi/patched_boot.img_copy/boot.img`" >> $AGNI_LOG_FILE
+fi
+echo "   " >> $AGNI_LOG_FILE
+echo " END OF LOG. Dated: `date` " >> $AGNI_LOG_FILE
+echo "   " >> $AGNI_LOG_FILE
+echo "############################################################################" >> $AGNI_LOG_FILE
+#############################################################################################################
