@@ -1,6 +1,0 @@
-#!/system/bin/sh
-#TI OMAP 4430 CPU Undervolting
-#Change CPU voltage:
-#-100mV
-
-echo "1300 1285 1275 1274 1213 1100 925 925 " > /sys/devices/system/cpu/cpu0/cpufreq/UV_mV_table
